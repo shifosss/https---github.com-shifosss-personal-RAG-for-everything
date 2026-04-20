@@ -15,11 +15,17 @@ def test_default_data_root_uses_home(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_env_override_data_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("CONTEXTD_HOME", str(tmp_path))
     get_settings.cache_clear()
-    s = get_settings()
-    assert s.data_root == tmp_path
+    try:
+        s = get_settings()
+        assert s.data_root == tmp_path
+    finally:
+        get_settings.cache_clear()
 
 
 def test_settings_is_frozen() -> None:
     s = Settings()
-    with pytest.raises(ValidationError):  # pydantic raises on frozen model mutation
+    # pydantic v2 BaseSettings with frozen=True raises ValidationError on mutation.
+    # Note: storage DTOs use @dataclass(frozen=True), which raises FrozenInstanceError instead —
+    # don't conflate the two across the pydantic/dataclass boundary.
+    with pytest.raises(ValidationError):
         s.data_root = Path("/nope")  # type: ignore[misc]
