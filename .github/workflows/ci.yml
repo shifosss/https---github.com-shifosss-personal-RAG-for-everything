@@ -1,0 +1,37 @@
+name: ci
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  python:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-14]
+        python-version: ["3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "0.5.5"
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+      - name: Sync deps
+        run: uv sync --dev
+      - name: Format check
+        run: uv run ruff format --check .
+      - name: Lint
+        run: uv run ruff check .
+      - name: Typecheck
+        run: uv run mypy contextd/
+      - name: Unit + integration tests
+        run: uv run pytest -q --maxfail=1
+      - name: Build + install smoke
+        run: |
+          uv build
+          python -m venv /tmp/contextd-smoke
+          /tmp/contextd-smoke/bin/pip install dist/contextd-*.whl
+          /tmp/contextd-smoke/bin/python -c "import contextd; print(contextd.__version__)"
