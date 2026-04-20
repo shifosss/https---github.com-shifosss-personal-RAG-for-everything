@@ -1,0 +1,144 @@
+# ───────────────────── Python ─────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg
+*.egg-info/
+.eggs/
+.installed.cfg
+MANIFEST
+
+# Virtualenvs
+.venv/
+venv/
+env/
+ENV/
+
+# Caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pytype/
+.dmypy.json
+dmypy.json
+.tox/
+.nox/
+.cache/
+.ipynb_checkpoints/
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+# Build artifacts
+build/
+dist/
+sdist/
+wheels/
+pip-wheel-metadata/
+*.whl
+*.tar.gz
+
+# uv / pip
+# Keep uv.lock tracked (app lockfile). Ignore pip's user installs only.
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ───────────────────── Node / TypeScript ─────────────────────
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+.yarn/
+.yarn-integrity
+
+# Build / type outputs
+mcp-server/dist/
+*.tsbuildinfo
+
+# Bundler caches
+.turbo/
+.vite/
+.next/
+.svelte-kit/
+.parcel-cache/
+
+# ───────────────────── contextd runtime data ─────────────────────
+# Repo-local dev data root — never commit indexed user content
+.contextd-dev/
+data/
+corpora/
+
+# LanceDB directories
+*.lance/
+*.lance
+
+# Hugging Face / model caches
+models/
+.cache/huggingface/
+hf_cache/
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.onnx
+*.gguf
+
+# ───────────────────── Secrets & credentials ─────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
+.anthropic/
+
+# ───────────────────── Editors / IDEs ─────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+.fleet/
+.zed/
+
+# ───────────────────── OS ─────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ───────────────────── Logs & ephemera ─────────────────────
+*.log
+logs/
+*.pid
+*.seed
+*.pid.lock
+
+# ───────────────────── Claude Code local settings ─────────────────────
+# Per-user permission allowlists; team settings (.claude/settings.json) are tracked.
+.claude/settings.local.json
+.claude/.todos/
+.claude/shell-snapshots/
+
+# ───────────────────── Misc ─────────────────────
+# Local scratch space
+scratch/
+tmp/
+tmp_*/
+*.tmp
