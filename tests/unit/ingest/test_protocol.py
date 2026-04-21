@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 from dataclasses import FrozenInstanceError
 from pathlib import Path
 
 import pytest
 
-from contextd.ingest.protocol import Adapter, ChunkDraft, SourceCandidate
+from contextd.ingest.protocol import Adapter, ChunkDraft, EdgeDraft, SourceCandidate
 
 
 def test_source_candidate_is_frozen():
@@ -39,3 +41,11 @@ def test_adapter_is_runtime_checkable():
             yield from ()
 
     assert isinstance(StubPDF(), Adapter)
+
+
+def test_edge_draft_frozen_and_hint_only() -> None:
+    e = EdgeDraft(source_ordinal=0, edge_type="wikilink", target_hint="Fu 2024")
+    assert e.target_ordinal is None
+    assert e.target_hint == "Fu 2024"
+    with pytest.raises(FrozenInstanceError):
+        e.source_ordinal = 1  # type: ignore[misc]

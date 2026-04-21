@@ -48,7 +48,7 @@ class EdgeDraft:
 
 @runtime_checkable
 class Adapter(Protocol):
-    source_type: str
+    source_type: SourceType
 
     def can_handle(self, path: Path) -> bool: ...
     def sources(self, path: Path) -> Iterable[SourceCandidate]: ...
