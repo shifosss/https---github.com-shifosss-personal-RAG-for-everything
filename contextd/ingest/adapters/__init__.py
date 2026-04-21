@@ -15,7 +15,9 @@ def load_default_adapters() -> list[Adapter]:
     # inner imports — guarded here because T5/T6 are not yet implemented.
     adapters: list[Adapter] = [PDFAdapter()]
     try:
-        from contextd.ingest.adapters.claude_export import ClaudeExportAdapter  # type: ignore[import-untyped]
+        from contextd.ingest.adapters.claude_export import (  # type: ignore[import-untyped]
+            ClaudeExportAdapter,
+        )
 
         adapters.append(ClaudeExportAdapter())
     except ImportError:

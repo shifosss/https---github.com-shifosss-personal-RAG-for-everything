@@ -22,11 +22,12 @@ import pymupdf4llm  # type: ignore[import-untyped]
 from tokenizers import Tokenizer  # type: ignore[import-untyped]
 
 from contextd.ingest.protocol import ChunkDraft, EdgeDraft, SourceCandidate
-from contextd.storage.models import SourceType
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
+
+    from contextd.storage.models import SourceType
 
 # ---------------------------------------------------------------------------
 # Section classification regexes (spec §14.3 — do not change without PRD bump)
@@ -135,9 +136,14 @@ class PDFAdapter:
             text: str = page.get("text", "")
 
             # Update running section label based on headings in this page.
+            # First matching section heading wins; prior section carries across
+            # page boundaries when no heading appears on the page.
+            # Fix: last-match-wins was silently dropping Discussion/Conclusion
+            # body text on pages that also contained a References heading.
             for label, pat in _SECTION_PATTERNS.items():
                 if pat.search(text):
                     section = label
+                    break
 
             # PRD: references section excluded from retrieval by default.
             if section == "references":
@@ -224,6 +230,11 @@ class PDFAdapter:
             t = self._count_tokens(para)
             if t > _MAX_TOKENS:
                 # Para too large — split by sentence.
+                # Flush any pending buffer first so prior content is not mixed
+                # with sentences from this oversized paragraph.
+                if buf:
+                    yield "\n".join(buf).strip()
+                    buf, buf_tok = [], 0
                 for sent in re.split(r"(?<=[.!?])\s+", para):
                     st = self._count_tokens(sent)
                     if buf_tok + st > _TARGET_TOKENS and buf:
