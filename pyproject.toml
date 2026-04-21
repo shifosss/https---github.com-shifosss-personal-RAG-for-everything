@@ -81,6 +81,10 @@ markers = [
   "privacy: enforce non-mutation + no-outbound-network",
   "slow: tests that download models or are slow",
 ]
+filterwarnings = [
+  "ignore::DeprecationWarning:pygit2",
+  "ignore::DeprecationWarning:swig_runtime_data4",
+]
 
 [tool.mypy]
 python_version = "3.12"
