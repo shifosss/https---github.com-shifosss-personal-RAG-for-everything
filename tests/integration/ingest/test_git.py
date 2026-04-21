@@ -63,6 +63,6 @@ def test_name_nodes_sorted_for_stable_decl_pairing(tiny_repo):
     from contextd.ingest.adapters import git_repo
 
     src = inspect.getsource(git_repo)
-    assert "sorted(captures.get" in src or "sort(key=lambda" in src or ".sort(" in src, (
-        "expected explicit sort of name_nodes by start_byte"
-    )
+    assert (
+        "sorted(captures.get" in src or "sort(key=lambda" in src or ".sort(" in src
+    ), "expected explicit sort of name_nodes by start_byte"
