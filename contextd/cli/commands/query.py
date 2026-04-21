@@ -71,10 +71,11 @@ def query(
     )
 
 
-def _result_to_dict(r: ChunkResult) -> dict:  # type: ignore[type-arg]
+def _result_to_dict(r: ChunkResult) -> dict[str, object]:
     return {
         "chunk": {
             "id": r.chunk.id,
+            "source_id": r.chunk.source_id,
             "content": r.chunk.content,
             "ordinal": r.chunk.ordinal,
             "section_label": r.chunk.section_label,

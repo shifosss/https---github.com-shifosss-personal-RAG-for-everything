@@ -13,6 +13,7 @@ from contextd.retrieve.fusion import reciprocal_rank_fusion
 from contextd.retrieve.rerank import RerankUnavailable, rerank
 from contextd.retrieve.rewrite import rewrite_query
 from contextd.retrieve.sparse import sparse_search
+from contextd.storage.db import fetch_chunks_by_ids, open_db
 from contextd.storage.models import ChunkResult, QueryTrace
 
 if TYPE_CHECKING:
@@ -55,8 +56,6 @@ async def retrieve(req: QueryRequest) -> tuple[list[ChunkResult], QueryTrace]:
 
     reranker_used: str | None = None
     if req.rerank and fused:
-        from contextd.storage.db import fetch_chunks_by_ids, open_db
-
         chunk_map = {
             c.id: c for c in fetch_chunks_by_ids(open_db(req.corpus), [cid for cid, _ in fused])
         }
@@ -92,8 +91,6 @@ async def retrieve(req: QueryRequest) -> tuple[list[ChunkResult], QueryTrace]:
     )
 
     qh = hashlib.sha256(req.query.encode()).hexdigest()[:16]
-    from contextd.storage.db import open_db
-
     conn = open_db(req.corpus)
     conn.execute(
         "INSERT INTO audit_log(occurred_at, actor, action, target, details_json) "
