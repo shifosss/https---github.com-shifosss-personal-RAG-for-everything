@@ -69,3 +69,35 @@ def test_ingest_is_idempotent_on_unchanged_hash(tmp_contextd_home):
     r2 = pipe.ingest(path=Path("/tmp/f.pdf"), corpus="personal")
     assert r1.sources_ingested == 1 and r1.sources_skipped == 0
     assert r2.sources_ingested == 0 and r2.sources_skipped == 1
+
+
+class FailingVectorStore:
+    """Simulates a VectorStore that fails on upsert after SQLite writes."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def upsert(self, ids, vecs) -> None:
+        raise RuntimeError("lancedb write failed")
+
+    def delete(self, ids) -> None:
+        pass
+
+
+def test_ingest_rolls_back_on_vector_failure(tmp_contextd_home, monkeypatch):
+    from contextd.ingest import pipeline as pipe_mod
+    from contextd.storage.db import get_source_by_path, open_db
+
+    monkeypatch.setattr(
+        pipe_mod.VectorStore,
+        "open",
+        classmethod(lambda cls, **kw: FailingVectorStore()),
+    )
+    pipe = IngestionPipeline(embedder=FakeEmbedder(), adapters=[TwoChunkAdapter()])
+    report = pipe.ingest(path=Path("/tmp/f.pdf"), corpus="personal")
+    assert report.sources_ingested == 0
+    assert report.sources_failed == 1
+    # Verify the source row was rolled back: a second ingest with a fixed vs would succeed
+    conn = open_db("personal")
+    src = get_source_by_path(conn, corpus="personal", path="/tmp/f.pdf")
+    assert src is None, f"rollback should have removed the source row, got {src}"

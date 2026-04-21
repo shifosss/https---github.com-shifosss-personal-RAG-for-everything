@@ -131,60 +131,65 @@ class IngestionPipeline:
         now = datetime.now(UTC)
         chunks: list[ChunkDraft] = list(adapter.parse(candidate))
         meta = adapter.metadata(candidate)
-        source_id = insert_source(
-            conn,
-            corpus=corpus,
-            source_type=candidate.source_type,
-            path=str(candidate.path),
-            content_hash=candidate.content_hash,
-            ingested_at=now,
-            chunk_count=len(chunks),
-            status="active",
-            title=candidate.title,
-            source_mtime=candidate.source_mtime,
-        )
-        for k, v in meta.items():
-            conn.execute(
-                "INSERT INTO source_meta(source_id, key, value) VALUES (?, ?, ?)",
-                (source_id, k, v),
-            )
-        ordinal_to_id: dict[int, int] = {}
-        for ch in chunks:
-            cid = insert_chunk(
+        conn.execute("BEGIN")
+        try:
+            source_id = insert_source(
                 conn,
-                source_id=source_id,
-                ordinal=ch.ordinal,
-                token_count=ch.token_count,
-                content=ch.content,
-                offset_start=ch.offset_start,
-                offset_end=ch.offset_end,
-                section_label=ch.section_label,
-                scope=ch.scope,
-                role=ch.role,
-                chunk_timestamp=ch.chunk_timestamp,
+                corpus=corpus,
+                source_type=candidate.source_type,
+                path=str(candidate.path),
+                content_hash=candidate.content_hash,
+                ingested_at=now,
+                chunk_count=len(chunks),
+                status="active",
+                title=candidate.title,
+                source_mtime=candidate.source_mtime,
             )
-            ordinal_to_id[ch.ordinal] = cid
-            for k, v in ch.metadata.items():
+            for k, v in meta.items():
                 conn.execute(
-                    "INSERT INTO chunk_meta(chunk_id, key, value) VALUES (?, ?, ?)",
-                    (cid, k, v),
+                    "INSERT INTO source_meta(source_id, key, value) VALUES (?, ?, ?)",
+                    (source_id, k, v),
                 )
-        if chunks:
-            vecs = self._embedder.embed([c.content for c in chunks])
-            vs.upsert([ordinal_to_id[c.ordinal] for c in chunks], vecs)
-        for e in adapter.edges(chunks):
-            tgt = ordinal_to_id.get(e.target_ordinal) if e.target_ordinal is not None else None
-            conn.execute(
-                "INSERT INTO edge(source_chunk_id, target_chunk_id, target_hint,"
-                " edge_type, label, weight) VALUES (?, ?, ?, ?, ?, ?)",
-                (
-                    ordinal_to_id[e.source_ordinal],
-                    tgt,
-                    e.target_hint,
-                    e.edge_type,
-                    e.label,
-                    e.weight,
-                ),
-            )
-        conn.commit()
+            ordinal_to_id: dict[int, int] = {}
+            for ch in chunks:
+                cid = insert_chunk(
+                    conn,
+                    source_id=source_id,
+                    ordinal=ch.ordinal,
+                    token_count=ch.token_count,
+                    content=ch.content,
+                    offset_start=ch.offset_start,
+                    offset_end=ch.offset_end,
+                    section_label=ch.section_label,
+                    scope=ch.scope,
+                    role=ch.role,
+                    chunk_timestamp=ch.chunk_timestamp,
+                )
+                ordinal_to_id[ch.ordinal] = cid
+                for k, v in ch.metadata.items():
+                    conn.execute(
+                        "INSERT INTO chunk_meta(chunk_id, key, value) VALUES (?, ?, ?)",
+                        (cid, k, v),
+                    )
+            if chunks:
+                vecs = self._embedder.embed([c.content for c in chunks])
+                vs.upsert([ordinal_to_id[c.ordinal] for c in chunks], vecs)
+            for e in adapter.edges(chunks):
+                tgt = ordinal_to_id.get(e.target_ordinal) if e.target_ordinal is not None else None
+                conn.execute(
+                    "INSERT INTO edge(source_chunk_id, target_chunk_id, target_hint,"
+                    " edge_type, label, weight) VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        ordinal_to_id[e.source_ordinal],
+                        tgt,
+                        e.target_hint,
+                        e.edge_type,
+                        e.label,
+                        e.weight,
+                    ),
+                )
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            raise
         return len(chunks)
