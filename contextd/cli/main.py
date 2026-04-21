@@ -3,6 +3,7 @@ from __future__ import annotations
 import typer
 
 from contextd.cli.commands import ingest as ingest_cmd
+from contextd.cli.commands import query as query_cmd
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -17,3 +18,4 @@ def _root() -> None:
 
 
 app.command(name="ingest", help="Ingest a path into a corpus.")(ingest_cmd.ingest)
+app.command(name="query", help="Retrieve chunks matching a query.")(query_cmd.query)
