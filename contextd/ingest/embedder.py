@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Self
 
 import numpy as np
 
@@ -21,7 +22,7 @@ class Embedder:
         return self._dim
 
     @classmethod
-    def load(cls, *, model: str = "BAAI/bge-m3", device: str = "cpu") -> Embedder:
+    def load(cls, *, model: str = "BAAI/bge-m3", device: str = "cpu") -> Self:
         from FlagEmbedding import BGEM3FlagModel  # type: ignore[import-untyped]
 
         m = BGEM3FlagModel(model, use_fp16=False, device=device)
