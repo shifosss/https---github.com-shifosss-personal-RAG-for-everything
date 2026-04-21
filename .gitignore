@@ -42,6 +42,8 @@ wheels/
 pip-wheel-metadata/
 *.whl
 *.tar.gz
+# Test fixtures are small, deterministic archives — keep them tracked.
+!tests/fixtures/**/*.tar.gz
 
 # uv / pip
 # Keep uv.lock tracked (app lockfile). Ignore pip's user installs only.
