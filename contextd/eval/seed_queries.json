@@ -1,0 +1,12 @@
+[
+  {"query": "negation handling in clinical NLP", "corpus": "personal", "expected_keywords": ["negation"], "tags": ["paraphrase"]},
+  {"query": "transformer architecture overview", "corpus": "personal", "expected_keywords": ["transformer"], "tags": ["direct"]},
+  {"query": "retrieval evaluation", "corpus": "personal", "expected_keywords": ["retrieval"], "tags": ["direct"]},
+  {"query": "personal knowledge graph", "corpus": "personal", "expected_keywords": ["personal"], "tags": ["direct"]},
+  {"query": "section-aware chunking for PDFs", "corpus": "personal", "expected_keywords": ["chunking"], "tags": ["direct"]},
+  {"query": "BGE-M3 dense embeddings", "corpus": "personal", "expected_keywords": ["embed"], "tags": ["direct"]},
+  {"query": "reciprocal rank fusion", "corpus": "personal", "expected_keywords": ["fusion"], "tags": ["direct"]},
+  {"query": "git repository tree-sitter", "corpus": "personal", "expected_keywords": ["git"], "tags": ["direct"]},
+  {"query": "claude export conversation", "corpus": "personal", "expected_keywords": ["claude"], "tags": ["direct"]},
+  {"query": "abstract of the paper", "corpus": "personal", "expected_keywords": ["abstract"], "tags": ["paraphrase"]}
+]
