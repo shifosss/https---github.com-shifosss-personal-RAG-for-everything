@@ -32,6 +32,7 @@ dependencies = [
   "mdit-py-plugins==0.4.2",
   "pygit2==1.16.0",
   "typer==0.13.0",
+  "click==8.1.8",
   "rich==13.9.4",
   "structlog==24.4.0",
   "python-ulid==3.0.0",
