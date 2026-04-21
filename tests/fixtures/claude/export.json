@@ -1,0 +1,167 @@
+{
+  "conversations": [
+    {
+      "uuid": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "name": "Negation in clinical NLP",
+      "created_at": "2026-04-01T10:00:00Z",
+      "updated_at": "2026-04-01T10:15:00Z",
+      "chat_messages": [
+        {
+          "uuid": "m1a",
+          "text": "How does NegEx handle nested negation?",
+          "sender": "human",
+          "created_at": "2026-04-01T10:00:00Z"
+        },
+        {
+          "uuid": "m1b",
+          "text": "NegEx uses rule-based trigger terms and scope windows. Nested negation like 'not sure if no pneumonia' is handled by tracking double-negatives explicitly.",
+          "sender": "assistant",
+          "created_at": "2026-04-01T10:01:00Z"
+        },
+        {
+          "uuid": "m1c",
+          "text": "What are the main limitations of that approach?",
+          "sender": "human",
+          "created_at": "2026-04-01T10:03:00Z"
+        },
+        {
+          "uuid": "m1d",
+          "text": "Rule-based systems are brittle on out-of-vocabulary trigger terms and degrade on informal clinical notes. Scope window size is also a tuned constant.",
+          "sender": "assistant",
+          "created_at": "2026-04-01T10:04:00Z"
+        },
+        {
+          "uuid": "m1e",
+          "text": "Is there a neural alternative?",
+          "sender": "human",
+          "created_at": "2026-04-01T10:06:00Z"
+        },
+        {
+          "uuid": "m1f",
+          "text": "Yes. BioNLP-based models like BioBERT fine-tuned on i2b2 NegEx can reach 95%+ F1 and generalise better across note types.",
+          "sender": "assistant",
+          "created_at": "2026-04-01T10:07:00Z"
+        },
+        {
+          "uuid": "m1g",
+          "text": "Which dataset should I use for evaluation?",
+          "sender": "human",
+          "created_at": "2026-04-01T10:09:00Z"
+        },
+        {
+          "uuid": "m1h",
+          "text": "The 2010 i2b2/VA challenge dataset is standard. It covers discharge summaries with gold negation and uncertainty spans.",
+          "sender": "assistant",
+          "created_at": "2026-04-01T10:10:00Z"
+        }
+      ]
+    },
+    {
+      "uuid": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+      "name": "LanceDB hybrid search setup",
+      "created_at": "2026-04-02T14:00:00Z",
+      "updated_at": "2026-04-02T14:20:00Z",
+      "chat_messages": [
+        {
+          "uuid": "m2a",
+          "text": "How do I run hybrid search in LanceDB 0.17?",
+          "sender": "human",
+          "created_at": "2026-04-02T14:00:00Z"
+        },
+        {
+          "uuid": "m2b",
+          "text": "LanceDB 0.17 supports hybrid search via rerankers. Create a table, add a full-text index, then call query().vector(...).text(...) and pass a reranker.",
+          "sender": "assistant",
+          "created_at": "2026-04-02T14:01:00Z"
+        },
+        {
+          "uuid": "m2c",
+          "text": "Which reranker should I use locally without an API?",
+          "sender": "human",
+          "created_at": "2026-04-02T14:03:00Z"
+        },
+        {
+          "uuid": "m2d",
+          "text": "Use RRFReranker for pure reciprocal rank fusion — no model needed. CohereReranker or CrossEncoderReranker require network or GPU respectively.",
+          "sender": "assistant",
+          "created_at": "2026-04-02T14:04:00Z"
+        },
+        {
+          "uuid": "m2e",
+          "text": "Can I store sparse BM25 vectors in the same table?",
+          "sender": "human",
+          "created_at": "2026-04-02T14:06:00Z"
+        },
+        {
+          "uuid": "m2f",
+          "text": "LanceDB's FTS index handles sparse retrieval internally. You don't store BM25 vectors explicitly; the engine builds the inverted index on the text column.",
+          "sender": "assistant",
+          "created_at": "2026-04-02T14:07:00Z"
+        },
+        {
+          "uuid": "m2g",
+          "text": "Got it. What is the default distance metric for dense vectors?",
+          "sender": "human",
+          "created_at": "2026-04-02T14:09:00Z"
+        }
+      ]
+    },
+    {
+      "uuid": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+      "name": "Python dataclass frozen patterns",
+      "created_at": "2026-04-03T09:00:00Z",
+      "updated_at": "2026-04-03T09:25:00Z",
+      "url": "https://claude.ai/chat/cccccccc-cccc-cccc-cccc-cccccccccccc",
+      "chat_messages": [
+        {
+          "uuid": "m3a",
+          "text": "Why use frozen=True on dataclasses?",
+          "sender": "human",
+          "created_at": "2026-04-03T09:00:00Z"
+        },
+        {
+          "uuid": "m3b",
+          "text": "frozen=True makes instances hashable and prevents accidental mutation, which is important for DTOs passed through multi-step pipelines.",
+          "sender": "assistant",
+          "created_at": "2026-04-03T09:01:00Z"
+        },
+        {
+          "uuid": "m3c",
+          "text": "Does it work with mutable default fields like lists?",
+          "sender": "human",
+          "created_at": "2026-04-03T09:03:00Z"
+        },
+        {
+          "uuid": "m3d",
+          "text": "No. You must use field(default_factory=list) for list fields and field(default_factory=dict) for dict fields. The frozen constraint prevents post-init reassignment too.",
+          "sender": "assistant",
+          "created_at": "2026-04-03T09:04:00Z"
+        },
+        {
+          "uuid": "m3e",
+          "text": "Can I still use __post_init__ with frozen dataclasses?",
+          "sender": "human",
+          "created_at": "2026-04-03T09:06:00Z"
+        },
+        {
+          "uuid": "m3f",
+          "text": "Yes, but to set derived attributes you must call object.__setattr__(self, 'field', value) inside __post_init__ since direct assignment raises FrozenInstanceError.",
+          "sender": "assistant",
+          "created_at": "2026-04-03T09:07:00Z"
+        },
+        {
+          "uuid": "m3g",
+          "text": "Is NamedTuple a better alternative for simple value objects?",
+          "sender": "human",
+          "created_at": "2026-04-03T09:09:00Z"
+        },
+        {
+          "uuid": "m3h",
+          "text": "NamedTuple is lighter and always immutable, but lacks default_factory and __post_init__. Use frozen dataclass when you need those; NamedTuple for simple coordinates or keys.",
+          "sender": "assistant",
+          "created_at": "2026-04-03T09:10:00Z"
+        }
+      ]
+    }
+  ]
+}
