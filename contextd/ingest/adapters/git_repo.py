@@ -49,7 +49,7 @@ _MAX_TOKENS = 1024  # token cap for a single scoped chunk
 _LANG_BY_EXT: dict[str, str] = {
     ".py": "python",
     ".ts": "typescript",
-    ".tsx": "typescript",
+    ".tsx": "tsx",
     ".js": "javascript",
     ".jsx": "javascript",
     ".rs": "rust",
@@ -72,6 +72,12 @@ _DECL_QUERY_BY_LANG: dict[str, str] = {
         (class_definition name: (identifier) @name) @decl
     """,
     "typescript": """
+        (function_declaration name: (identifier) @name) @decl
+        (class_declaration name: (type_identifier) @name) @decl
+        (interface_declaration name: (type_identifier) @name) @decl
+        (method_definition name: (property_identifier) @name) @decl
+    """,
+    "tsx": """
         (function_declaration name: (identifier) @name) @decl
         (class_declaration name: (type_identifier) @name) @decl
         (interface_declaration name: (type_identifier) @name) @decl
@@ -105,6 +111,13 @@ _DECL_QUERY_BY_LANG: dict[str, str] = {
 # tree-sitter-typescript exposes language_typescript / language_tsx.
 _LANG_ENTRY_OVERRIDE: dict[str, str] = {
     "typescript": "language_typescript",
+    "tsx": "language_tsx",
+}
+
+# Languages whose grammar lives in a differently-named wheel.
+# Both TypeScript and TSX grammars ship in ``tree_sitter_typescript``.
+_LANG_MODULE: dict[str, str] = {
+    "tsx": "tree_sitter_typescript",
 }
 
 
@@ -116,7 +129,7 @@ _LANG_ENTRY_OVERRIDE: dict[str, str] = {
 def _load_lang(name: str) -> Language | None:
     """Import the grammar wheel and return a ``Language``, or ``None`` on failure."""
     try:
-        mod_name = f"tree_sitter_{name}"
+        mod_name = _LANG_MODULE.get(name, f"tree_sitter_{name}")
         mod = __import__(mod_name)
         entry = _LANG_ENTRY_OVERRIDE.get(name, "language")
         fn = getattr(mod, entry)
@@ -277,7 +290,7 @@ class GitRepoAdapter:
         captures = query.captures(tree.root_node)
         # tree-sitter 0.23: captures = {capture_name: [node, ...]}
         decl_nodes = captures.get("decl", [])
-        name_nodes = captures.get("name", [])
+        name_nodes = sorted(captures.get("name", []), key=lambda n: n.start_byte)
 
         decls: list[tuple[int, int, str]] = []
         for decl in decl_nodes:

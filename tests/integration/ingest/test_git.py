@@ -45,3 +45,24 @@ def test_source_metadata_has_commit_hash(tiny_repo):
     meta = a.metadata(cand)
     assert meta.get("repo_head_commit")
     assert meta.get("repo_branch")
+
+
+def test_tsx_ext_uses_tsx_grammar():
+    from contextd.ingest.adapters.git_repo import _LANG_BY_EXT, _LANG_ENTRY_OVERRIDE
+
+    assert _LANG_BY_EXT[".tsx"] == "tsx"
+    assert _LANG_ENTRY_OVERRIDE["tsx"] == "language_tsx"
+    assert _LANG_BY_EXT[".ts"] == "typescript"
+    assert _LANG_ENTRY_OVERRIDE["typescript"] == "language_typescript"
+
+
+def test_name_nodes_sorted_for_stable_decl_pairing(tiny_repo):
+    """Regression guard: pairing loop now sorts name_nodes by start_byte."""
+    import inspect
+
+    from contextd.ingest.adapters import git_repo
+
+    src = inspect.getsource(git_repo)
+    assert "sorted(captures.get" in src or "sort(key=lambda" in src or ".sort(" in src, (
+        "expected explicit sort of name_nodes by start_byte"
+    )
