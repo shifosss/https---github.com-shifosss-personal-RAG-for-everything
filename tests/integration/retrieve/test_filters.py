@@ -9,16 +9,12 @@ returned results from every source type.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
 
 import pytest
 
 from contextd.retrieve.filters import apply_filter
 from contextd.retrieve.preprocess import QueryFilter
 from contextd.storage.models import Chunk, ChunkResult, Source
-
-if TYPE_CHECKING:
-    pass
 
 pytestmark = pytest.mark.unit
 

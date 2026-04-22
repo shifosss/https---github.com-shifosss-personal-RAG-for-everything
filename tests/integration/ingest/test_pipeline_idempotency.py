@@ -156,9 +156,9 @@ def test_multi_conversation_claude_export_does_not_collide_on_path(
     report = pipe.ingest(path=fixture, corpus="personal")
 
     assert report.sources_failed == 0, report.errors
-    assert report.sources_ingested == 3, (
-        f"expected 3 conversation sources, got {report.sources_ingested}"
-    )
+    assert (
+        report.sources_ingested == 3
+    ), f"expected 3 conversation sources, got {report.sources_ingested}"
 
     conn = open_db("personal")
     paths = [
