@@ -35,3 +35,46 @@ jobs:
           python -m venv /tmp/contextd-smoke
           /tmp/contextd-smoke/bin/pip install dist/contextd-*.whl
           /tmp/contextd-smoke/bin/python -c "import contextd; print(contextd.__version__)"
+
+  privacy:
+    # Separate job so a privacy regression is isolated from unit/integration noise.
+    # Blocking: any failure here fails CI.
+    runs-on: ubuntu-24.04
+    needs: [python]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "0.5.5"
+      - name: Set up Python
+        run: uv python install 3.12
+      - name: Sync deps
+        run: uv sync --dev
+      - name: Privacy suite (no outbound, non-mutation, no content at INFO)
+        run: uv run pytest -m privacy -q
+
+  eval:
+    # Informational: the 30-query retrieval gate is flaky on fixture corpora
+    # and depends on the Anthropic API being reachable. We run it on every
+    # push/PR for telemetry but never block merges.
+    runs-on: ubuntu-24.04
+    needs: [python]
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "0.5.5"
+      - name: Set up Python
+        run: uv python install 3.12
+      - name: Sync deps
+        run: uv sync --dev
+      - name: Seed eval corpus from fixtures
+        run: |
+          uv run contextd ingest tests/fixtures/pdfs/ --corpus eval
+          uv run contextd ingest tests/fixtures/claude/export.json --corpus eval
+        continue-on-error: true
+      - name: Run 30-query eval (informational)
+        run: uv run contextd eval contextd/eval/seed_queries.json --corpus eval --no-judge
+        continue-on-error: true
