@@ -101,3 +101,53 @@ def test_ingest_rolls_back_on_vector_failure(tmp_contextd_home, monkeypatch):
     conn = open_db("personal")
     src = get_source_by_path(conn, corpus="personal", path="/tmp/f.pdf")
     assert src is None, f"rollback should have removed the source row, got {src}"
+
+
+# ---------------------------------------------------------------------------
+# Multi-source-per-file regression
+# ---------------------------------------------------------------------------
+
+
+class _FakeEncoding:
+    def __init__(self, n: int) -> None:
+        self.ids = [0] * n
+
+
+class _FakeTokenizer:
+    def encode(self, text: str, *, add_special_tokens: bool = False) -> _FakeEncoding:  # noqa: ARG002
+        return _FakeEncoding(max(1, len(text.split())))
+
+
+def test_multi_conversation_claude_export_does_not_collide_on_path(
+    tmp_contextd_home, monkeypatch
+) -> None:
+    """Regression: fixture contains 3 conversations in one JSON file. Before the
+    pipeline started keying source.path on canonical_id, the second and third
+    conversations crashed on UNIQUE(source.corpus, source.path) because all
+    three SourceCandidates carried the same file path."""
+    import tokenizers
+
+    from contextd.ingest.adapters.claude_export import ClaudeExportAdapter
+    from contextd.storage.db import open_db
+
+    monkeypatch.setattr(
+        tokenizers.Tokenizer,
+        "from_pretrained",
+        lambda *_a, **_k: _FakeTokenizer(),
+    )
+
+    fixture = Path(__file__).resolve().parents[2] / "fixtures" / "claude" / "export.json"
+    pipe = IngestionPipeline(embedder=FakeEmbedder(), adapters=[ClaudeExportAdapter()])
+    report = pipe.ingest(path=fixture, corpus="personal")
+
+    assert report.sources_failed == 0, report.errors
+    assert (
+        report.sources_ingested == 3
+    ), f"expected 3 conversation sources, got {report.sources_ingested}"
+
+    conn = open_db("personal")
+    paths = [
+        row[0] for row in conn.execute("SELECT path FROM source WHERE status='active' ORDER BY id")
+    ]
+    assert len(paths) == len(set(paths)) == 3
+    assert all("#conversations/" in p for p in paths)

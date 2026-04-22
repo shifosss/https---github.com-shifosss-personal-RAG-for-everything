@@ -89,7 +89,7 @@ class IngestionPipeline:
         errors: list[str] = []
 
         for candidate in adapter.sources(path):
-            existing = get_source_by_path(conn, corpus=corpus, path=str(candidate.path))
+            existing = get_source_by_path(conn, corpus=corpus, path=candidate.canonical_id)
             if existing and existing.content_hash == candidate.content_hash and not force:
                 skipped += 1
                 continue
@@ -137,7 +137,11 @@ class IngestionPipeline:
                 conn,
                 corpus=corpus,
                 source_type=candidate.source_type,
-                path=str(candidate.path),
+                # canonical_id == str(path) for single-source adapters (PDF, git_repo);
+                # for claude_export it includes the per-conversation fragment, which is
+                # what UNIQUE(corpus, path) must key on so multi-conversation files
+                # don't collide on the second/third insert.
+                path=candidate.canonical_id,
                 content_hash=candidate.content_hash,
                 ingested_at=now,
                 chunk_count=len(chunks),
