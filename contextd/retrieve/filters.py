@@ -53,11 +53,11 @@ def _matches(r: ChunkResult, f: QueryFilter) -> bool:
     # exclude_reference_sections: default True per QueryFilter dataclass.
     # Reference lists dilute retrieval quality because "Author et al."
     # entries keyword-match everything.
-    if f.exclude_reference_sections and r.chunk.section_label:
-        if r.chunk.section_label.strip().lower() in _REFERENCE_SECTION_LABELS:
-            return False
-
-    return True
+    return not (
+        f.exclude_reference_sections
+        and r.chunk.section_label
+        and r.chunk.section_label.strip().lower() in _REFERENCE_SECTION_LABELS
+    )
 
 
 def apply_filter(results: list[ChunkResult], f: QueryFilter) -> list[ChunkResult]:

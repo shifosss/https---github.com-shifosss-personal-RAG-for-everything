@@ -73,6 +73,29 @@ def test_get_chunk_by_id(tmp_contextd_home, monkeypatch):
     assert r.json()["chunk"]["chunk"]["id"] == cid
 
 
+def test_get_chunk_honors_include_edges_false(tmp_contextd_home, monkeypatch):
+    """Regression P4#1: the TS Zod schema advertises include_edges and
+    include_metadata as controllable; the Python route used to ignore both
+    and always return full payloads."""
+    cid, _ = _seed(monkeypatch)
+    client = TestClient(create_app())
+
+    r = client.get(f"/v1/chunks/{cid}?corpus=personal&include_edges=false")
+    assert r.status_code == 200, r.text
+    assert r.json()["chunk"]["edges"] == []
+
+    r = client.get(f"/v1/chunks/{cid}?corpus=personal&include_metadata=false")
+    assert r.status_code == 200, r.text
+    assert r.json()["chunk"]["metadata"] == {}
+
+    r = client.get(f"/v1/chunks/{cid}?corpus=personal&include_edges=false&include_metadata=false")
+    assert r.status_code == 200, r.text
+    body = r.json()["chunk"]
+    assert body["edges"] == [] and body["metadata"] == {}
+    # Core fields still present
+    assert body["chunk"]["id"] == cid and body["source"]["path"] == "/a.pdf"
+
+
 def test_list_corpora(tmp_contextd_home, monkeypatch):
     _seed(monkeypatch)
     client = TestClient(create_app())

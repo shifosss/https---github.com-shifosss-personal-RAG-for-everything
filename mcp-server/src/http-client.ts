@@ -4,6 +4,18 @@ const HOST = process.env.CONTEXTD_HTTP_HOST ?? "127.0.0.1";
 const PORT = Number(process.env.CONTEXTD_HTTP_PORT ?? 8787);
 const BASE = `http://${HOST}:${PORT}`;
 
+// Timeouts for every undici request. Without these a hung FastAPI
+// (slow startup in combined-serve mode, deadlocked handler) would hang
+// the MCP client indefinitely with no error propagating up to the SDK.
+// Overridable for long-running operations (reranker, large eval batches)
+// via CONTEXTD_HTTP_BODY_TIMEOUT_MS / CONTEXTD_HTTP_HEADERS_TIMEOUT_MS.
+const BODY_TIMEOUT_MS = Number(
+  process.env.CONTEXTD_HTTP_BODY_TIMEOUT_MS ?? 15_000,
+);
+const HEADERS_TIMEOUT_MS = Number(
+  process.env.CONTEXTD_HTTP_HEADERS_TIMEOUT_MS ?? 5_000,
+);
+
 export class HttpError extends Error {
   constructor(
     public code: string,
@@ -43,6 +55,8 @@ export async function post<T>(path: string, body: unknown): Promise<T> {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
+    bodyTimeout: BODY_TIMEOUT_MS,
+    headersTimeout: HEADERS_TIMEOUT_MS,
   });
   return (await parse(resp)) as T;
 }
@@ -57,6 +71,9 @@ export async function get<T>(
       url.searchParams.set(k, String(v));
     }
   }
-  const resp = await request(url);
+  const resp = await request(url, {
+    bodyTimeout: BODY_TIMEOUT_MS,
+    headersTimeout: HEADERS_TIMEOUT_MS,
+  });
   return (await parse(resp)) as T;
 }

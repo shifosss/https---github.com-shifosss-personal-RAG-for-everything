@@ -85,7 +85,12 @@ def create_app() -> FastAPI:
         )
 
     @app.get("/v1/chunks/{chunk_id}", response_model=FetchChunkResponse)
-    async def fetch_chunk(chunk_id: int, corpus: str = Query("personal")) -> FetchChunkResponse:
+    async def fetch_chunk(
+        chunk_id: int,
+        corpus: str = Query("personal"),
+        include_edges: bool = Query(True),
+        include_metadata: bool = Query(True),
+    ) -> FetchChunkResponse:
         _require_corpus(corpus)
         conn = open_db(corpus)
         chunks = fetch_chunks_by_ids(conn, [chunk_id])
@@ -95,7 +100,15 @@ def create_app() -> FastAPI:
                 detail=ErrorEnvelope(code="NOT_FOUND", message=f"chunk_id={chunk_id}").model_dump(),
             )
         result = hydrate_results(corpus=corpus, scored=[(chunk_id, 1.0)])
-        return FetchChunkResponse(chunk=_cr_to_view(result[0]))
+        view = _cr_to_view(result[0])
+        # Honor the MCP-surface toggles. The TS Zod schema has always
+        # advertised these as controllable; before this change the Python
+        # route silently returned the full shape regardless.
+        if not include_edges:
+            view = view.model_copy(update={"edges": []})
+        if not include_metadata:
+            view = view.model_copy(update={"metadata": {}})
+        return FetchChunkResponse(chunk=view)
 
     @app.get("/v1/chunks/{chunk_id}/context", response_model=ExpandContextResponse)
     async def expand_context(
