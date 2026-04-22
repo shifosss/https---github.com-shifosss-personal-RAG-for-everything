@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from contextd.config import get_settings
 from contextd.logging_ import get_logger
 from contextd.retrieve.dense import dense_search
+from contextd.retrieve.filters import apply_filter
 from contextd.retrieve.format import hydrate_results
 from contextd.retrieve.fusion import reciprocal_rank_fusion
 from contextd.retrieve.rerank import RerankUnavailable, rerank
@@ -83,11 +84,16 @@ async def retrieve(req: QueryRequest) -> tuple[list[ChunkResult], QueryTrace]:
         except RerankUnavailable as e:
             log.warning("rerank.unavailable", error=str(e), trace_id=req.trace_id)
 
-    top = fused[: req.limit]
-    results = hydrate_results(
+    # Hydrate the full fused window (already bounded by retrieval_rerank_top_k),
+    # apply QueryFilter, then truncate to req.limit. Filtering before the cut
+    # means --source-type pdf can still return N pdf results from a mixed-type
+    # fused pool, rather than silently filtering the top-N and returning fewer.
+    hydrated = hydrate_results(
         corpus=req.corpus,
-        scored=[(cid, float(score)) for cid, score in top],
+        scored=[(cid, float(score)) for cid, score in fused],
     )
+    filtered = apply_filter(hydrated, req.filters)
+    results = filtered[: req.limit]
 
     latency_ms = int((time.perf_counter() - t0) * 1000)
     trace = QueryTrace(
