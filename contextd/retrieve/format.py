@@ -60,10 +60,16 @@ def hydrate_results(*, corpus: str, scored: list[tuple[int, float]]) -> list[Chu
         c = chunks.get(cid)
         if c is None:
             continue
+        source = sources_by_id.get(c.source_id)
+        if source is None:
+            # Chunk row points at a source that was deleted or never written
+            # (e.g. a LanceDB orphan vector from a failed ingest that landed
+            # before the compensating-delete fix). Skip rather than crash.
+            continue
         out.append(
             ChunkResult(
                 chunk=c,
-                source=sources_by_id[c.source_id],
+                source=source,
                 score=score,
                 rank=rank_idx,
                 metadata=meta_by_chunk.get(cid, {}),

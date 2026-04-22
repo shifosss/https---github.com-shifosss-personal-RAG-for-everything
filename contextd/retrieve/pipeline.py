@@ -41,13 +41,22 @@ async def retrieve(req: QueryRequest) -> tuple[list[ChunkResult], QueryTrace]:
     for q in queries:
         tasks.append(dense_search(query=q, corpus=req.corpus, k=s.retrieval_dense_top_k))
         tasks.append(sparse_search(query=q, corpus=req.corpus, k=s.retrieval_sparse_top_k))
-    outs = await asyncio.gather(*tasks)
+    # return_exceptions=True so a single sub-query failure (e.g. LanceDB
+    # missing-table on a new corpus, FTS5 syntax edge case) can't abort the
+    # whole retrieve — PRD §15.6 makes graceful degradation a hard requirement.
+    outs = await asyncio.gather(*tasks, return_exceptions=True)
+
+    def _lane(x: object) -> list[tuple[int, float]]:
+        if isinstance(x, BaseException):
+            log.warning("retrieve.lane_failed", error=repr(x), trace_id=req.trace_id)
+            return []
+        return x  # type: ignore[return-value]
 
     per_query: list[tuple[list[tuple[int, float]], list[tuple[int, float]]]] = []
     dense_count = 0
     sparse_count = 0
     for i in range(0, len(outs), 2):
-        dense, sparse = outs[i], outs[i + 1]
+        dense, sparse = _lane(outs[i]), _lane(outs[i + 1])
         dense_count += len(dense)
         sparse_count += len(sparse)
         per_query.append((dense, sparse))

@@ -47,7 +47,9 @@ def query(
             "results": [_result_to_dict(r) for r in results],
             "trace": asdict(trace),
         }
-        console.print(json.dumps(payload, default=str))
+        # typer.echo, not console.print — Rich word-wraps JSON mid-token when
+        # stdout is piped to jq on narrow terminals.
+        typer.echo(json.dumps(payload, default=str))
         return
 
     table = Table(title=f"Top {len(results)} for: {query}")
