@@ -4,6 +4,8 @@
 
 No telemetry. No outbound network by default. Named-corpus isolation so personal and regulated clinical data never share an index.
 
+**New here?** Start with the [**User Guide**](./docs/USER_GUIDE.md) for a complete walkthrough from install to troubleshooting.
+
 ---
 
 ## 90-second demo
@@ -138,6 +140,7 @@ contextd eval contextd/eval/seed_queries.json --corpus eval
 
 ## Documentation
 
+- [`docs/USER_GUIDE.md`](./docs/USER_GUIDE.md) — complete user guide (install, ingestion, querying, MCP, config reference, troubleshooting)
 - [`docs/PRDs/`](./docs/PRDs/) — full v0.1 product spec (architecture, ingestion, retrieval, MCP, CI gates)
 - [`docs/plans/`](./docs/plans/) — per-phase implementation plans (bootstrap → polish)
 - [`CLAUDE.md`](./CLAUDE.md) — project instructions for Claude Code
