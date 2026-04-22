@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import typer
+from dotenv import load_dotenv
 
 from contextd.cli.commands import ingest as ingest_cmd
 from contextd.cli.commands import query as query_cmd
+
+load_dotenv()
 
 app = typer.Typer(
     no_args_is_help=True,
