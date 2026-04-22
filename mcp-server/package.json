@@ -17,7 +17,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.27.1",
     "undici": "6.21.0",
-    "zod": "3.23.8",
+    "zod": "^3.25.0",
     "zod-to-json-schema": "3.23.5"
   },
   "devDependencies": {
