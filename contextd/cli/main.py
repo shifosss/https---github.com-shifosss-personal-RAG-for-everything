@@ -19,3 +19,7 @@ def _root() -> None:
 
 app.command(name="ingest", help="Ingest a path into a corpus.")(ingest_cmd.ingest)
 app.command(name="query", help="Retrieve chunks matching a query.")(query_cmd.query)
+
+from contextd.cli.commands import serve as serve_cmd  # noqa: E402
+
+app.command(name="serve", help="Start the MCP server (stdio) + HTTP backend.")(serve_cmd.serve)
