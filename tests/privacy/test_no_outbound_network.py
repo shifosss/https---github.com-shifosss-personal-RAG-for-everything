@@ -2,7 +2,7 @@
 
 The PRD §2 design principle is "local-first, no telemetry." This test
 pins that behavior: with ``socket.socket.connect`` replaced by a guard
-that raises ``OutboundBlocked`` on any non-loopback IP, a full ingest
+that raises ``OutboundBlockedError`` on any non-loopback IP, a full ingest
 + query cycle must still succeed. If any subsystem reaches out to the
 network by default, the guard trips and this test fails.
 
@@ -28,7 +28,7 @@ _LOOPBACK_V4 = ipaddress.IPv4Network("127.0.0.0/8")
 _LOOPBACK_V6 = ipaddress.ip_address("::1")
 
 
-class OutboundBlocked(AssertionError):
+class OutboundBlockedError(AssertionError):
     """Raised when something tries to connect to a non-loopback destination."""
 
 
@@ -52,7 +52,7 @@ def block_outbound(monkeypatch: pytest.MonkeyPatch) -> None:
             return real_connect(self, address)
         host = address[0]
         if not _is_loopback(str(host)):
-            raise OutboundBlocked(f"outbound connect to {host} blocked")
+            raise OutboundBlockedError(f"outbound connect to {host} blocked")
         return real_connect(self, address)
 
     monkeypatch.setattr(socket.socket, "connect", guarded)

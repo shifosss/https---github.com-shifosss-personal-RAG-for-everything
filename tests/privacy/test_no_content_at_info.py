@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -25,6 +25,9 @@ from contextd.retrieve.pipeline import retrieve
 from contextd.retrieve.preprocess import build_request
 from contextd.storage.db import insert_chunk, insert_corpus, insert_source, open_db
 from contextd.storage.vectors import VectorStore
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 pytestmark = pytest.mark.privacy
 
@@ -82,6 +85,6 @@ async def test_query_content_not_logged_at_info(
 
     joined = " ".join(rec.getMessage() for rec in caplog.records)
     for sentinel in _SENTINELS:
-        assert sentinel not in joined, (
-            f"sensitive content {sentinel!r} leaked at INFO: {joined[:400]!r}"
-        )
+        assert (
+            sentinel not in joined
+        ), f"sensitive content {sentinel!r} leaked at INFO: {joined[:400]!r}"

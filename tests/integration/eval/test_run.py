@@ -9,14 +9,16 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 import contextd.eval.run as run_mod
 from contextd.eval.run import EvalReport, run
 from contextd.storage.models import Chunk, ChunkResult, QueryTrace, Source
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 pytestmark = pytest.mark.integration
 

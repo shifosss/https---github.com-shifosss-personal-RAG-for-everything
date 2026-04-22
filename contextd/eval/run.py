@@ -65,8 +65,12 @@ async def _score_one(
         rerank=rerank,
     )
     results, _ = await retrieve(req)
-    keywords = [str(k).lower() for k in q.get("expected_keywords") or []]
-    allowed_types = [str(t) for t in q.get("expected_source_types") or []]
+    kw_raw = q.get("expected_keywords") or []
+    types_raw = q.get("expected_source_types") or []
+    assert isinstance(kw_raw, list), "expected_keywords must be a list"
+    assert isinstance(types_raw, list), "expected_source_types must be a list"
+    keywords = [str(k).lower() for k in kw_raw]
+    allowed_types = [str(t) for t in types_raw]
     pos: int | None = None
     for i, r in enumerate(results, start=1):
         if _match(r, keywords, allowed_types):
@@ -105,8 +109,9 @@ async def run(
             mrr_sum += 1.0 / pos
         if judge_score is not None:
             judge_scores.append(judge_score)
-        tags = q.get("tags") or []
-        for tag in tags:
+        tags_raw = q.get("tags") or []
+        assert isinstance(tags_raw, list), "tags must be a list"
+        for tag in tags_raw:
             per_tag_hits.setdefault(str(tag), []).append(1 if pos is not None and pos <= 5 else 0)
 
     per_tag = {
