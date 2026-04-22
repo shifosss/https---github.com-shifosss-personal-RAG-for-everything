@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import os
+
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
 import typer
 from dotenv import load_dotenv
 

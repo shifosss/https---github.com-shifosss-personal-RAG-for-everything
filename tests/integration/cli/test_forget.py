@@ -48,6 +48,39 @@ def test_forget_removes_source_and_chunks(tmp_contextd_home):
     assert rows2 == []
 
 
+def test_forget_resolves_relative_path(tmp_contextd_home, tmp_path, monkeypatch):
+    """Regression: `contextd forget foo.pdf` (relative) must match the
+    absolute path stored in the DB. Previously it was passed verbatim
+    to SQL and silently failed."""
+    conn = open_db("personal")
+    insert_corpus(
+        conn,
+        name="personal",
+        embed_model="t",
+        embed_dim=4,
+        created_at=datetime.now(UTC),
+        schema_version=1,
+    )
+    target = tmp_path / "relative-me.pdf"
+    target.write_bytes(b"x")
+    insert_source(
+        conn,
+        corpus="personal",
+        source_type="pdf",
+        path=str(target.resolve()),
+        content_hash="sha256:r",
+        ingested_at=datetime.now(UTC),
+        chunk_count=0,
+        status="active",
+    )
+    conn.commit()
+
+    monkeypatch.chdir(tmp_path)
+    r = CliRunner().invoke(app, ["forget", "relative-me.pdf", "--corpus", "personal", "--dry-run"])
+    assert r.exit_code == 0, r.output
+    assert "would delete" in r.output
+
+
 def test_forget_dry_run_does_not_delete(tmp_contextd_home):
     conn = open_db("personal")
     insert_corpus(
