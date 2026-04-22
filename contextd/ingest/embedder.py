@@ -23,22 +23,28 @@ class Embedder:
 
     @classmethod
     def load(cls, *, model: str = "BAAI/bge-m3", device: str = "cpu") -> Self:
-        from FlagEmbedding import BGEM3FlagModel  # type: ignore[import-untyped]
+        # sentence-transformers replaces FlagEmbedding for dense vectors.
+        # FlagEmbedding 1.3.x eagerly imports a reranker submodule that pulls
+        # GEMMA2_START_DOCSTRING out of transformers — removed in 4.49+, so the
+        # whole package is unimportable on modern transformers. BGE-M3 is the
+        # canonical SentenceTransformer model, so this is a lateral move.
+        from sentence_transformers import SentenceTransformer
 
-        m = BGEM3FlagModel(model, use_fp16=False, device=device)
+        m = SentenceTransformer(model, device=device)
+        m.max_seq_length = 8192  # BGE-M3 native context
         return cls(model, device, m)
 
     def embed(self, texts: list[str]) -> np.ndarray:
         if not texts:
             return np.zeros((0, self._dim), dtype=np.float32)
-        out = self._model.encode(  # type: ignore[attr-defined]
-            texts, batch_size=16, max_length=8192
-        )["dense_vecs"]
-        arr = np.asarray(out, dtype=np.float32)
-        # BGE-M3 outputs are already L2-normalized; reassert defensively.
-        norms = np.linalg.norm(arr, axis=1, keepdims=True)
-        norms[norms == 0] = 1.0
-        return arr / norms
+        arr = self._model.encode(  # type: ignore[attr-defined]
+            texts,
+            batch_size=16,
+            normalize_embeddings=True,
+            convert_to_numpy=True,
+            show_progress_bar=False,
+        )
+        return np.asarray(arr, dtype=np.float32)
 
 
 @lru_cache(maxsize=1)
