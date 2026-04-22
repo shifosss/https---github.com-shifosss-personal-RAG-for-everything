@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from anthropic import Anthropic
+
+from contextd.llm_json import parse_llm_json
 
 if TYPE_CHECKING:
     from anthropic.types import Message, MessageParam
@@ -57,7 +58,7 @@ async def rewrite_query(*, query: str, model: str, timeout_ms: int) -> Rewritten
         )
         block = res.content[0]
         raw_text: str = block.text  # type: ignore[union-attr]
-        data = json.loads(raw_text.strip())
+        data = parse_llm_json(raw_text)
         subs = [s.strip() for s in data.get("sub_queries", []) if isinstance(s, str) and s.strip()]
         seen: set[str] = {query}
         uniq: list[str] = []

@@ -41,6 +41,31 @@ async def test_rerank_unavailable_raises_typed_error(monkeypatch):
         await rerank(query="q", candidates=[(1, "t")], model="m", timeout_ms=5000)
 
 
+async def test_rerank_parses_markdown_fenced_response(monkeypatch):
+    """Regression: Haiku 4.5 wraps JSON in ```json ... ``` fences.
+
+    Pre-fix, every rerank call silently fell back to RerankUnavailable
+    because ``json.loads`` choked on the leading backtick.
+    """
+    fenced = '```json\n[{"id": 2, "score": 10}, {"id": 1, "score": 5}]\n```'
+
+    class FakeMessages:
+        def create(self, **kw):
+            class R:
+                content = [type("b", (), {"text": fenced})()]
+
+            return R()
+
+    class FakeClient:
+        messages = FakeMessages()
+
+    monkeypatch.setattr("contextd.retrieve.rerank._anthropic_client", lambda: FakeClient())
+    out = await rerank(
+        query="q", candidates=[(1, "a"), (2, "b")], model="claude-haiku-4-5", timeout_ms=5000
+    )
+    assert [c for c, _ in out] == [2, 1]
+
+
 async def test_rerank_timeout_raises(monkeypatch):
     class SlowMessages:
         def create(self, **kw):

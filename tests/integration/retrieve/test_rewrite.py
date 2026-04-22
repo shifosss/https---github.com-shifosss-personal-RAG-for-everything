@@ -29,6 +29,26 @@ async def test_rewrite_deduplicates_and_caps(monkeypatch):
     assert len(set(["orig", *out.sub_queries])) <= 6
 
 
+async def test_rewrite_parses_markdown_fenced_response(monkeypatch):
+    """Regression: Haiku 4.5 wraps JSON in ```json ... ``` fences."""
+    fenced = '```json\n{"sub_queries": ["alt one", "alt two"]}\n```'
+
+    class FakeMessages:
+        def create(self, **kw):
+            class R:
+                content = [type("b", (), {"text": fenced})()]
+
+            return R()
+
+    class FakeClient:
+        messages = FakeMessages()
+
+    monkeypatch.setattr("contextd.retrieve.rewrite._anthropic_client", lambda: FakeClient())
+    out = await rewrite_query(query="orig", model="m", timeout_ms=3000)
+    assert out.sub_queries == ["alt one", "alt two"]
+    assert out.rewriter_used == "m"
+
+
 async def test_rewrite_failure_returns_empty_subqueries(monkeypatch):
     class FakeMessages:
         def create(self, **kw):

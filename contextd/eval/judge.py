@@ -8,12 +8,13 @@ so eval still runs on machines without ``ANTHROPIC_API_KEY``.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import os
 from functools import lru_cache
 
 from anthropic import Anthropic
+
+from contextd.llm_json import parse_llm_json
 
 _log = logging.getLogger("contextd.eval.judge")
 
@@ -66,7 +67,7 @@ async def judge_result(*, query: str, result_text: str) -> int | None:
         first = next((b for b in blocks if hasattr(b, "text")), None)
         if first is None:
             return None
-        data = json.loads(str(first.text).strip())
+        data = parse_llm_json(str(first.text))
         score = int(data.get("score", 0))
     except Exception:
         _log.debug("judge_result: scoring skipped", exc_info=True)

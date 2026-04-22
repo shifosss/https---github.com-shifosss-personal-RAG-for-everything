@@ -75,3 +75,17 @@ async def test_judge_returns_none_on_malformed_json(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(judge_mod, "_anthropic_client", lambda: client)
     score = await judge_result(query="q", result_text="ctx")
     assert score is None
+
+
+async def test_judge_parses_markdown_fenced_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Regression: Haiku 4.5 wraps JSON in ```json ... ``` fences.
+
+    Pre-fix, every judge call silently returned None because
+    ``json.loads`` choked on the leading backtick — eval showed
+    ``judge_n=0`` despite successful API calls.
+    """
+    fenced = '```json\n{"score": 8, "rationale": "on topic"}\n```'
+    client = _FakeClient(_FakeMessagesOK(fenced))
+    monkeypatch.setattr(judge_mod, "_anthropic_client", lambda: client)
+    score = await judge_result(query="q", result_text="ctx")
+    assert score == 8

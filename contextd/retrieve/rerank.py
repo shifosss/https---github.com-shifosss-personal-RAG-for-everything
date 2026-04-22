@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING
 
 from anthropic import Anthropic
 
+from contextd.llm_json import parse_llm_json
+
 if TYPE_CHECKING:
     from anthropic.types import Message, MessageParam
 
@@ -74,7 +76,7 @@ async def rerank(
         block = result.content[0]
         # Duck-type: real TextBlock and test fakes both expose .text
         raw_text: str = block.text  # type: ignore[union-attr]
-        data = json.loads(raw_text.strip())
+        data = parse_llm_json(raw_text)
         scored = [(int(x["id"]), float(x["score"])) for x in data]
     except Exception as e:
         raise RerankUnavailable(f"invalid rerank JSON: {e!r}") from e
