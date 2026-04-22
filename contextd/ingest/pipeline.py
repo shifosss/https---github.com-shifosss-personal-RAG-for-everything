@@ -131,6 +131,14 @@ class IngestionPipeline:
         now = datetime.now(UTC)
         chunks: list[ChunkDraft] = list(adapter.parse(candidate))
         meta = adapter.metadata(candidate)
+        # vs.upsert() happens inside the SQLite transaction but LanceDB has no
+        # transactions — if a later edge INSERT or the final COMMIT fails, the
+        # upserted vectors persist with chunk_ids that never landed in SQLite,
+        # becoming unreachable orphans (hash-idempotency skips re-ingest). We
+        # track whether upsert ran and do a best-effort compensating delete on
+        # any exception. The compensating delete can itself fail — logged, not
+        # raised, because the original exception is what the caller needs.
+        upserted_ids: list[int] = []
         conn.execute("BEGIN")
         try:
             source_id = insert_source(
@@ -177,7 +185,8 @@ class IngestionPipeline:
                     )
             if chunks:
                 vecs = self._embedder.embed([c.content for c in chunks])
-                vs.upsert([ordinal_to_id[c.ordinal] for c in chunks], vecs)
+                upserted_ids = [ordinal_to_id[c.ordinal] for c in chunks]
+                vs.upsert(upserted_ids, vecs)
             for e in adapter.edges(chunks):
                 tgt = ordinal_to_id.get(e.target_ordinal) if e.target_ordinal is not None else None
                 conn.execute(
@@ -195,5 +204,14 @@ class IngestionPipeline:
             conn.execute("COMMIT")
         except Exception:
             conn.execute("ROLLBACK")
+            if upserted_ids:
+                try:
+                    vs.delete(upserted_ids)
+                except Exception as delete_err:
+                    log.warning(
+                        "ingest.vector_cleanup_failed",
+                        chunk_count=len(upserted_ids),
+                        error=repr(delete_err),
+                    )
             raise
         return len(chunks)

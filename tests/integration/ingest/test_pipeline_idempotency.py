@@ -84,6 +84,21 @@ class FailingVectorStore:
         pass
 
 
+class UpsertOkButCommitFailsVS:
+    """Upsert succeeds, but a later exception forces rollback — tests the
+    compensating vs.delete() path."""
+
+    def __init__(self) -> None:
+        self.upserted: list[int] = []
+        self.deleted: list[int] = []
+
+    def upsert(self, ids, vecs) -> None:
+        self.upserted.extend(ids)
+
+    def delete(self, ids) -> None:
+        self.deleted.extend(ids)
+
+
 def test_ingest_rolls_back_on_vector_failure(tmp_contextd_home, monkeypatch):
     from contextd.ingest import pipeline as pipe_mod
     from contextd.storage.db import get_source_by_path, open_db
@@ -141,9 +156,9 @@ def test_multi_conversation_claude_export_does_not_collide_on_path(
     report = pipe.ingest(path=fixture, corpus="personal")
 
     assert report.sources_failed == 0, report.errors
-    assert (
-        report.sources_ingested == 3
-    ), f"expected 3 conversation sources, got {report.sources_ingested}"
+    assert report.sources_ingested == 3, (
+        f"expected 3 conversation sources, got {report.sources_ingested}"
+    )
 
     conn = open_db("personal")
     paths = [
@@ -151,3 +166,68 @@ def test_multi_conversation_claude_export_does_not_collide_on_path(
     ]
     assert len(paths) == len(set(paths)) == 3
     assert all("#conversations/" in p for p in paths)
+
+
+# ---------------------------------------------------------------------------
+# Compensating vector delete on mid-transaction failure
+# ---------------------------------------------------------------------------
+
+
+class TwoChunksBadEdgeAdapter:
+    """Runs vs.upsert() then raises KeyError from an edge pointing at a
+    non-existent ordinal — simulates any failure that lands between the
+    upsert call and the COMMIT."""
+
+    source_type = "pdf"
+
+    def can_handle(self, p):
+        return True
+
+    def sources(self, p):
+        from contextd.ingest.protocol import SourceCandidate
+
+        yield SourceCandidate(
+            path=Path("/tmp/bad.pdf"),
+            source_type="pdf",
+            canonical_id="/tmp/bad.pdf",
+            content_hash="sha256:bad",
+            title="Bad",
+        )
+
+    def parse(self, source):
+        from contextd.ingest.protocol import ChunkDraft
+
+        yield ChunkDraft(ordinal=0, content="a", token_count=1)
+        yield ChunkDraft(ordinal=1, content="b", token_count=1)
+
+    def metadata(self, source):
+        return {}
+
+    def edges(self, chunks):
+        from contextd.ingest.protocol import EdgeDraft
+
+        # source_ordinal=99 is not in ordinal_to_id, so the pipeline's
+        # `ordinal_to_id[e.source_ordinal]` raises KeyError AFTER vs.upsert()
+        # already ran — this is the orphan-vector code path.
+        yield EdgeDraft(source_ordinal=99, target_ordinal=0, edge_type="conversation_next")
+
+
+def test_vs_upsert_rolled_back_when_commit_fails(tmp_contextd_home, monkeypatch):
+    from contextd.ingest import pipeline as pipe_mod
+
+    vs = UpsertOkButCommitFailsVS()
+    monkeypatch.setattr(
+        pipe_mod.VectorStore,
+        "open",
+        classmethod(lambda cls, **kw: vs),
+    )
+    pipe = IngestionPipeline(embedder=FakeEmbedder(), adapters=[TwoChunksBadEdgeAdapter()])
+    report = pipe.ingest(path=Path("/tmp/bad.pdf"), corpus="personal")
+
+    assert report.sources_failed == 1
+    assert report.sources_ingested == 0
+    assert vs.upserted, "test assumes upsert ran before the failure"
+    assert vs.deleted == vs.upserted, (
+        f"compensating delete must remove exactly the ids that were upserted; "
+        f"upserted={vs.upserted}, deleted={vs.deleted}"
+    )
