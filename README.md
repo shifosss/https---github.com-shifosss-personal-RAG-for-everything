@@ -87,6 +87,25 @@ The MCP server exposes 7 tools: `search-corpus`, `fetch-chunk`, `expand-context`
 
 ---
 
+## Why contextd vs. existing RAG products
+
+Most RAG products are **"bring your data to the retriever"** — a cloud index, or an indexer welded into a single product. `contextd` is **"bring the retriever to the data, and let any agent call it."**
+
+| | SaaS RAG<br/>(Glean, Mem, Pinecone+Assistants) | Vendor-native<br/>(Claude Projects, Cursor index, ChatGPT Knowledge) | DIY frameworks<br/>(LangChain, LlamaIndex) | **`contextd`** |
+|---|---|---|---|---|
+| Data location | Their cloud | Their cloud, one vendor | Wherever you wire it | **Local only; CI-enforced zero outbound** |
+| Agents that can query it | One web UI + API | Exactly one product | Whatever you build yourself | **Any MCP client — same index** |
+| Personal ↔ regulated boundary | Org pool + ACLs | Not a concept | Your problem | **Hard corpus-per-DB on disk** |
+| Ingestion model | Auto-polling connectors | UI drag-drop | You write the pipeline | **Explicit CLI, idempotent on content hash** |
+| Source-file mutation | N/A (they own the data) | Unclear | Your problem | **CI sha256s source tree before/after every ingest** |
+| Retrieval underneath | Proprietary | Proprietary | You pick + tune | **Pinned stack: BGE-M3 + FTS5 + RRF + optional Haiku rerank, 30-query ship-gate** |
+
+**The one thing nobody else does:** ingest once, then query the same local index from Claude Code, Codex CLI, Cursor, and Continue back-to-back — no re-upload, no vendor lock, no cloud detour.
+
+**Where it's weaker, honestly:** no web UI, no auto-sync connectors (Notion/Gmail/Drive land in v0.2+), no team sharing, no cross-corpus search. If you want a dashboard or a multi-user knowledge base, this is the wrong tool.
+
+---
+
 ## Design principles
 
 - **Local-first.** SQLite + LanceDB under `~/.contextd/` (override with `CONTEXTD_HOME`). No data leaves the machine unless you explicitly enable reranking or query rewriting, which call Anthropic.
