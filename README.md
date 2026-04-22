@@ -57,8 +57,10 @@ Flags: `--rerank/--no-rerank` (default on, requires `ANTHROPIC_API_KEY`), `--rew
 Start the combined stdio MCP + local HTTP backend:
 
 ```bash
-contextd serve --corpus research
+contextd serve
 ```
+
+The server is multi-corpus — every MCP tool takes `corpus` as a parameter, so one server instance handles all of your corpora. Use `list-corpora` from the client to see what's available.
 
 Claude Code (`.mcp.json` in your project or `~/.claude.json`):
 
@@ -67,7 +69,7 @@ Claude Code (`.mcp.json` in your project or `~/.claude.json`):
   "mcpServers": {
     "contextd": {
       "command": "contextd",
-      "args": ["serve", "--corpus", "research"]
+      "args": ["serve"]
     }
   }
 }
@@ -78,7 +80,7 @@ Codex CLI (`~/.codex/config.toml`):
 ```toml
 [mcp_servers.contextd]
 command = "contextd"
-args = ["serve", "--corpus", "research"]
+args = ["serve"]
 ```
 
 The MCP server exposes 7 tools: `search-corpus`, `fetch-chunk`, `expand-context`, `get-edges`, `list-sources`, `get-source`, `list-corpora`.

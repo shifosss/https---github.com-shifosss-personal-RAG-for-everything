@@ -21,7 +21,7 @@ uv run contextd ingest ~/papers/ --corpus research
 uv run contextd query "transformer attention mechanism" --corpus research --limit 5
 
 # 5. Expose to any MCP agent (Claude Code, Codex CLI, Cursor, Continue)
-uv run contextd serve --corpus research
+uv run contextd serve
 ```
 
 ---
@@ -154,11 +154,14 @@ contextd query "auth middleware design" --json | jq '.chunks[].content'
 
 `contextd` is MCP-first. `contextd serve` starts both the Python HTTP backend and the Node MCP stdio server — MCP clients connect over stdio.
 
+The server is **multi-corpus**: one running instance serves every corpus on disk. MCP tools like `search-corpus` take `corpus` as a parameter — the client picks which corpus per call. Use `list-corpora` to discover what's available.
+
 ### Start the server
 ```bash
-contextd serve --corpus research                # HTTP (127.0.0.1:8787) + MCP stdio
+contextd serve                                  # HTTP (127.0.0.1:8787) + MCP stdio
 contextd serve --http-only                      # just the HTTP backend (useful with curl)
 contextd serve --mcp-only                       # just the MCP server; HTTP must be running separately
+contextd serve --host 0.0.0.0 --port 9000       # override HTTP bind
 ```
 
 ### Wire into Claude Code
@@ -169,7 +172,7 @@ contextd serve --mcp-only                       # just the MCP server; HTTP must
   "mcpServers": {
     "contextd": {
       "command": "contextd",
-      "args": ["serve", "--corpus", "research"]
+      "args": ["serve"]
     }
   }
 }
@@ -181,7 +184,7 @@ contextd serve --mcp-only                       # just the MCP server; HTTP must
 ```toml
 [mcp_servers.contextd]
 command = "contextd"
-args = ["serve", "--corpus", "research"]
+args = ["serve"]
 ```
 
 ### Available MCP tools

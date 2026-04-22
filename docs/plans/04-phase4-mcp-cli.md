@@ -1332,7 +1332,7 @@ git commit -m "test: verify named-corpus on-disk isolation (S5)"
 
 Not a pytest test — add `docs/plans/04-cross-ai-smoke.md` with step-by-step:
 
-1. Start `uv run contextd serve --corpus research`.
+1. Start `uv run contextd serve` (multi-corpus; `corpus` is passed per MCP tool call).
 2. Configure Claude Code `.mcp.json` to launch `node mcp-server/dist/index.js` with env `CONTEXTD_HTTP_PORT=8787`.
 3. In Claude Code, ask: _"Search the research corpus for 'transformer architecture'"_ — verify all 7 tools appear in the tool palette and `search_corpus` returns chunks.
 4. Repeat for Codex CLI (point its MCP config at the same `mcp-server/dist/index.js`). Verify at least `search_corpus` + `fetch_chunk` work.

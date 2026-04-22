@@ -563,7 +563,7 @@ Sections (in order):
 6. **Use from Claude Code / Codex / any MCP client.**
 
    ```bash
-   contextd serve --corpus research
+   contextd serve
    ```
 
    Plus the `.mcp.json` / `codex` config snippet.
