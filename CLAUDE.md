@@ -4,23 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-`contextd` — a local-first, MCP-first personal RAG server that unifies PDFs, AI conversation exports, git repos, and notes behind a single MCP endpoint any agent can query. See [docs/PRDs/](./docs/PRDs/) for the full v0.1 spec.
+`contextd` — a local-first, MCP-first personal RAG server that unifies PDFs, AI conversation exports, and git repos behind a single MCP endpoint any agent can query. Currently at `0.1.0.dev0` on branch `phase-5-polish`; all v0.1 Phases 1–5 shipped.
 
-**The repo is currently pre-code.** Only the PRDs exist. When implementing, the PRDs are the default spec — follow their choices unless surfacing a clearly better alternative with the tradeoff stated.
+Key references:
 
-Key PRD sections to consult before writing code:
+- [README.md](./README.md) — pitch + competitive positioning
+- [docs/USER_GUIDE.md](./docs/USER_GUIDE.md) — complete end-user walkthrough (install, ingest, query, MCP, config, troubleshooting)
+- [docs/PRDs/](./docs/PRDs/) — v0.1 product spec (§13 tech stack, §14 adapters, §15 retrieval, §16 build plan)
+- [docs/plans/](./docs/plans/) — per-phase implementation plans (bootstrap → polish)
 
-- [§13 Tech Stack & Dependencies](./docs/PRDs/part2_s8-s13.md) — pinned libraries and versions
-- [§14 Ingestion Adapter Specs](./docs/PRDs/part3_s14-s16.md) — PDF, Claude export, git adapters
-- [§15 Retrieval Pipeline Spec](./docs/PRDs/part3_s14-s16.md) — hybrid dense+sparse+rerank
-- [§16 2-Day Build Plan](./docs/PRDs/part3_s14-s16.md) — phased scope; treat as the v0.1 scope gate
+The PRDs remain the source of truth for intent; when code diverges, the reason belongs in the commit message or the corresponding plan doc.
 
 ## Scope & guardrails
 
 - **v0.1 scope is fixed by PRD §16** (Phases 1–5, Must-haves M1–M10, two Should-haves S5/S6). Out-of-scope work is deferred to v0.2+ unless explicitly reopened. Flag scope creep, don't silently accumulate it.
 - **Named-corpus separation is non-negotiable.** Personal corpus and any SickKids / PHIPA-regulated clinical data must never share an index or ingestion path. Default `contextd` usage here is personal-only; clinical work stays inside the institutional environment.
 - **Local-first, no telemetry.** No outbound network calls by default, no analytics, no crash reporting. Network is opt-in per source (e.g., Anthropic API for reranking is gated on user config).
-- **Python ↔ TypeScript boundary.** Python owns storage, embeddings, retrieval, ingestion. TypeScript owns the MCP server surface. They communicate over a Unix domain socket (POSIX) or localhost HTTP (fallback) — never by importing each other.
+- **Python ↔ TypeScript boundary.** Python owns storage, embeddings, retrieval, ingestion; runs FastAPI on `127.0.0.1:8787`. TypeScript owns the MCP stdio server (`mcp-server/`) and forwards to Python over localhost HTTP via `undici`. They never import each other.
 
 ## Tech stack (pinned per PRD §13)
 
@@ -29,45 +29,50 @@ Key PRD sections to consult before writing code:
 | Python           | CPython 3.12 (3.11 supported)                      | `uv` for packaging, lockfile `uv.lock`     |
 | Node             | 22 LTS                                             | `pnpm` pinned via `packageManager` field   |
 | Storage          | SQLite (WAL, FTS5, JSON1) + LanceDB 0.17           | data root `~/.contextd/` in prod           |
-| Embeddings       | BGE-M3 via `sentence-transformers` 3.3.x           | `torch==2.5.1+cpu`, `[gpu]` extra for CUDA |
+| Embeddings       | BGE-M3 via `sentence-transformers` 3.3.1           | `torch>=2.6,<2.7`, `[gpu]` extra for CUDA  |
 | LLM              | `anthropic` 0.50 (`claude-haiku-4-5` default)      | graceful degradation if unreachable        |
-| MCP              | `@modelcontextprotocol/sdk` 1.27.x + `zod` 3.23    | stdio default transport                    |
+| MCP              | `@modelcontextprotocol/sdk` 1.27.1 + `zod` ^3.25   | stdio default transport                    |
 | HTTP             | `fastapi` 0.115 + `uvicorn` 0.32 + `pydantic` 2.10 |                                            |
 | CLI              | `typer` 0.13 + `rich` 13.9                         |                                            |
 | Lint/format (Py) | `ruff` 0.8 (format + check)                        |                                            |
 | Lint/format (TS) | `biome` 1.9                                        |                                            |
 | Tests            | `pytest` 8.3 + `pytest-asyncio` 0.24; `vitest` 2.1 |                                            |
 
-Prefer these exact pins when scaffolding. If a newer version is strictly needed, call it out.
+Pins are authoritative in `pyproject.toml` + `uv.lock` and `mcp-server/package.json` + `pnpm-lock.yaml`. The table above is a quick reference; always check the lockfile for the exact version in use.
 
 ## Commands
 
-These don't exist yet — they become real as Phases 1–5 land:
-
 ```bash
 # Python
-uv sync                    # install deps
-uv run ruff format .       # format
-uv run ruff check .        # lint
-uv run pytest              # test
+uv sync                                      # install deps
+uv run ruff format .                         # format
+uv run ruff check .                          # lint
+uv run mypy contextd/                        # type check
+uv run pytest                                # unit + integration (excludes `slow` by default)
+uv run pytest -m privacy                     # privacy invariants (no outbound + non-mutation)
 
-# TypeScript (inside mcp-server/ subpackage)
+# TypeScript (inside mcp-server/)
 pnpm install
-pnpm biome format --write .
-pnpm biome check .
-pnpm vitest
+pnpm format                                  # biome format --write src/
+pnpm lint                                    # biome check src/
+pnpm test                                    # vitest
+pnpm build                                   # emit dist/
 
-# CLI (once Phase 2 lands)
-contextd ingest ~/papers/ --type pdf --corpus research
-contextd query "..." --limit 5
-contextd mcp               # start MCP server
+# CLI (console script `contextd` → contextd.cli.main:app)
+uv run contextd ingest ~/papers/ --corpus research
+uv run contextd query "..." --corpus research --limit 5
+uv run contextd serve                        # MCP stdio + HTTP on 127.0.0.1:8787
+uv run contextd eval contextd/eval/seed_queries.json --corpus eval
 ```
+
+Full CLI surface: `ingest`, `query`, `serve`, `list`, `forget`, `status`, `config`, `version`, `eval`.
 
 ## Local setup notes
 
 - **Dev machine is macOS**; CI matrix targets Ubuntu 22.04/24.04, macOS 14, WSL2. Avoid macOS-only syscalls in production paths (e.g., launchd, FSEvents without Linux fallback).
-- **`pnpm` is not installed globally** — install via `npm install -g pnpm` or `brew install pnpm` before the first Node task. **`uv` is at `~/.local/bin/uv`** (already installed).
-- **Data path during dev is repo-local** (e.g., `./data/` or `./.contextd-dev/`, gitignored). The PRD-specified `~/.contextd/` comes later; make the path configurable from day one via `CONTEXTD_HOME` so the switch is a config change, not a refactor.
+- **`pnpm` and `uv` are required.** `uv` at `~/.local/bin/uv` (installed); `pnpm` via `brew install pnpm` or `npm i -g pnpm`.
+- **Data root is `~/.contextd/`** by default (override with `CONTEXTD_HOME`). Per-corpus layout: `~/.contextd/corpora/<name>/` holds that corpus's SQLite DB + LanceDB dir; corpora are fully isolated on disk.
+- **`.env` is auto-loaded** at CLI entry via `python-dotenv`. Put `ANTHROPIC_API_KEY` there — only needed for `--rerank`, `--rewrite`, and `eval --judge`. **Never read `.env` directly** in code or from shell (`cat`, `head`, etc.); verify via `contextd status` (shows `api_key_present`) or `dotenv_values('.env').keys()`.
 
 ## Code style
 
@@ -80,9 +85,11 @@ See the language rules in `~/.claude/rules/` (auto-loaded): Python follows PEP 8
 
 ## Testing
 
-- TDD for retrieval, ingestion, and storage subsystems. Eval harness (30 queries, Recall@5 ≥ 0.80) is the ship gate, not an afterthought.
-- Coverage targets for v0.1: storage 70%, adapters 60%, overall 50% (PRD §13.8.3). Don't block on higher numbers during the 2-day build.
-- **Privacy + non-mutation CI tests** land in Phase 5 (§16.7) — they assert no outbound traffic by default and that ingestion never modifies source files.
+- **Markers** (configured in `pyproject.toml`): `unit` (fast, isolated), `integration` (touches SQLite/LanceDB/filesystem), `privacy` (no outbound + non-mutation), `slow` (model downloads). Default `pytest` run excludes `slow`.
+- **Eval harness is the ship gate**, not an afterthought: `contextd eval contextd/eval/seed_queries.json --corpus eval`. Gates: Recall@5 ≥ 0.80, Recall@10 ≥ 0.90, MRR ≥ 0.60, judge ≥ 6.5. The `eval` corpus must be pre-populated from `tests/fixtures/`.
+- **TDD** for retrieval, ingestion, and storage subsystems. Regression tests accompany every bug fix — see `tests/integration/` for the established pattern.
+- **Privacy suite** (`pytest -m privacy`) asserts no non-loopback sockets open during full ingest + query cycles, and that ingestion never mutates source files (sha256 before/after).
+- Coverage targets for v0.1: storage 70%, adapters 60%, overall 50% (PRD §13.8.3).
 
 ## Communication
 
